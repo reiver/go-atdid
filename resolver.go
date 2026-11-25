@@ -42,6 +42,7 @@ type Resolver struct {
 // A did:plc's document comes from the PLC directory ("<directory>/<did>"); a did:web's from "https://<host>/.well-known/did.json".
 //
 // It returns an error wrapping [ErrNotFound] if the DID positively does not exist — the PLC directory answered 404, or the did:web host answered with anything other than 2xx.
+// If the PLC directory answered 410 (the DID is tombstoned), the error wraps both [ErrTombstoned] and [ErrNotFound].
 // It returns an error wrapping [ErrResolutionFailed] if it could not tell (ex: a network error, a redirect, a 5xx from the PLC directory, or a document that is too large),
 // and one wrapping [ErrBadDocument] if the document is not a valid DID document for 'id' — its "id" must be 'id'.
 //
@@ -93,6 +94,8 @@ func (receiver Resolver) Resolve(ctx context.Context, id string) (did.Document, 
 		return did.Document{}, erorr.Wrap(ErrResolutionFailed, "redirected — redirects are not followed", field.String("did", id), field.String("url", documentURL), field.Int("status", status))
 	case isPLC && http.StatusNotFound == status:
 		return did.Document{}, erorr.Wrap(ErrNotFound, "PLC directory does not have the DID", field.String("did", id))
+	case isPLC && http.StatusGone == status:
+		return did.Document{}, erorr.Wrap(erorr.Errors{ErrTombstoned, ErrNotFound}, "PLC directory has tombstoned the DID", field.String("did", id))
 	case isPLC:
 		return did.Document{}, erorr.Wrap(ErrResolutionFailed, "PLC directory answered with an error", field.String("did", id), field.String("url", documentURL), field.Int("status", status))
 	default:

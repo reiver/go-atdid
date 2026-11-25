@@ -112,7 +112,8 @@ func TestResolver_Resolve_errors(t *testing.T) {
 		{Name: "unsupported method", DID: "did:key:" + secp256k1Multikey, Expected: atdid.ErrUnsupportedMethod},
 
 		{Name: "plc 404", DID: testDID, Transport: fakeTransport{Status: http.StatusNotFound}, Expected: atdid.ErrNotFound, Requests: 1},
-		{Name: "plc 410", DID: testDID, Transport: fakeTransport{Status: http.StatusGone}, Expected: atdid.ErrResolutionFailed, Requests: 1},
+		{Name: "plc 410", DID: testDID, Transport: fakeTransport{Status: http.StatusGone}, Expected: atdid.ErrTombstoned, Requests: 1},
+		{Name: "plc 410 is not found", DID: testDID, Transport: fakeTransport{Status: http.StatusGone}, Expected: atdid.ErrNotFound, Requests: 1},
 		{Name: "plc 500", DID: testDID, Transport: fakeTransport{Status: http.StatusInternalServerError}, Expected: atdid.ErrResolutionFailed, Requests: 1},
 		{Name: "web 404", DID: webDID, Transport: fakeTransport{Status: http.StatusNotFound}, Expected: atdid.ErrNotFound, Requests: 1},
 		{Name: "web 500", DID: webDID, Transport: fakeTransport{Status: http.StatusInternalServerError}, Expected: atdid.ErrNotFound, Requests: 1},
@@ -181,5 +182,16 @@ func TestResolver_Resolve_context(t *testing.T) {
 
 	if _, err := resolver.Resolve(ctx, testDID); !errors.Is(err, atdid.ErrResolutionFailed) {
 		t.Errorf("Expected an error wrapping %q but actually got: %v", atdid.ErrResolutionFailed, err)
+	}
+}
+
+func TestResolver_Resolve_notFoundIsNotTombstoned(t *testing.T) {
+	transport := &fakeTransport{Status: http.StatusNotFound}
+	var resolver atdid.Resolver = atdid.Resolver{
+		HTTPClient: &http.Client{Transport: transport},
+	}
+
+	if _, err := resolver.Resolve(context.Background(), testDID); errors.Is(err, atdid.ErrTombstoned) {
+		t.Errorf("Did not expect a 404 to be an error wrapping %q, but it was: %v", atdid.ErrTombstoned, err)
 	}
 }

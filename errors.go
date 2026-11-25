@@ -13,5 +13,6 @@ const (
 	ErrNotFound          = erorr.Error("atdid: DID not found")
 	ErrResolutionFailed  = erorr.Error("atdid: DID resolution failed")
 	ErrServiceNotFound   = erorr.Error("atdid: service not found")
+	ErrTombstoned        = erorr.Error("atdid: DID is tombstoned (deactivated)")
 	ErrUnsupportedMethod = erorr.Error("atdid: unsupported DID method — ATProto allows only did:plc and did:web")
 )
